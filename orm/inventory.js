@@ -6,5 +6,5 @@ module.exports= new orm.Schema({
     sellingPrice:Number,
     mode:Array,
     category:String,
-    weight:Number
+    weight:String,
 });
