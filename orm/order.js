@@ -55,6 +55,10 @@ const orderSchema = new orm.Schema(
       enum: ["Shop", "Customer"],
       trim: true,
     },
+    vendor: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
