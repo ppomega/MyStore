@@ -77,5 +77,9 @@ orderSchema.pre("validate", function calculateOrderTotals() {
     this.estimatedTotal = this.items.reduce((sum, item) => sum + item.total, 0);
   }
 });
+orderSchema.pre("validate", function () {
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+  this.createdAt = new Date(Date.now() + IST_OFFSET);
+});
 
 module.exports = orderSchema;
