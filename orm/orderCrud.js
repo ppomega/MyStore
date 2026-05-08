@@ -1,8 +1,8 @@
 const orm = require("mongoose");
-const { connectToDb } = require("./crud");
+const { connectToDb } = require("./inventoryCrud");
 const orderSchema = require("./order");
 
-const COLLECTION_NAME = "Order";
+const COLLECTION_NAME = "Orders";
 const MODEL_NAME = "Order";
 
 function getOrderModel() {

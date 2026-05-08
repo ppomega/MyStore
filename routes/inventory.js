@@ -1,5 +1,5 @@
 const express = require("express");
-const inventoryCrud = require("../orm/crud");
+const inventoryCrud = require("../orm/inventoryCrud");
 
 const router = express.Router();
 
