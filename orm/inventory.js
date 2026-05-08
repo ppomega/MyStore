@@ -14,16 +14,34 @@ const ALLOWED_MODE_KEYS = [
 
 const allowedModeKeySet = new Set(ALLOWED_MODE_KEYS);
 
-function getModeKeys(mode) {
+function getModeEntries(mode) {
   if (!mode) {
     return [];
   }
 
   if (mode instanceof Map) {
-    return Array.from(mode.keys());
+    return Array.from(mode.entries());
   }
 
-  return Object.keys(mode);
+  if (Array.isArray(mode)) {
+    return mode.flatMap((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        return [];
+      }
+
+      if (entry instanceof Map) {
+        return Array.from(entry.entries());
+      }
+
+      return Object.entries(entry);
+    });
+  }
+
+  return Object.entries(mode);
+}
+
+function getModeKeys(mode) {
+  return getModeEntries(mode).map(([key]) => key);
 }
 
 const inventorySchema = new orm.Schema({
@@ -37,22 +55,20 @@ const inventorySchema = new orm.Schema({
     min: 0,
   },
   mode: {
-    type: Map,
-    of: {
-      type: Number,
-      min: 0,
-      validate: {
-        validator(value) {
-          return Number.isInteger(value);
-        },
-        message: "Mode quantity must be an integer",
-      },
-    },
+    type: [orm.Schema.Types.Mixed],
     validate: {
       validator(mode) {
-        return getModeKeys(mode).every((key) => allowedModeKeySet.has(key));
+        return getModeEntries(mode).every(([key, value]) => {
+          const quantity = Number(value);
+
+          return (
+            allowedModeKeySet.has(key) &&
+            Number.isInteger(quantity) &&
+            quantity >= 0
+          );
+        });
       },
-      message: `Mode can only contain these keys: ${ALLOWED_MODE_KEYS.join(", ")}`,
+      message: `Mode must be an array using these keys with integer quantities: ${ALLOWED_MODE_KEYS.join(", ")}`,
     },
   },
   defaultMode: {
