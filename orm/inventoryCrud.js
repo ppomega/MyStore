@@ -1,18 +1,10 @@
 const orm = require("mongoose");
-require("dotenv").config();
+const { connectToDb } = require("../config/db");
 
 const inventorySchema = require("./inventory");
 
 const COLLECTION_NAME = "Inventory";
 const MODEL_NAME = "Inventory";
-
-async function connectToDb() {
-  if (orm.connection.readyState === 1) {
-    return;
-  }
-
-  await orm.connect(process.env.DB);
-}
 
 function getInventoryModel() {
   return (
@@ -65,7 +57,6 @@ async function deleteInventoryItem(id) {
 }
 
 module.exports = {
-  connectToDb,
   getInventoryModel,
   createInventoryItem,
   getInventoryItems,

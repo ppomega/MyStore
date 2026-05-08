@@ -1,5 +1,5 @@
 const orm = require("mongoose");
-const { connectToDb } = require("./inventoryCrud");
+const { connectToDb } = require("../config/db");
 const orderSchema = require("./order");
 
 const COLLECTION_NAME = "Orders";
