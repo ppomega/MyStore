@@ -101,7 +101,17 @@ const inventorySchema = new orm.Schema({
     },
   },
   category: String,
-  weight: String,
+  weight: {
+    type: String,
+    trim: true,
+    validate: {
+      validator(value) {
+        const mode = getModeFromValidationContext(this);
+        return !value || getModeKeys(mode).includes("Loose");
+      },
+      message: "Weight can only be defined for Loose items",
+    },
+  },
 });
 
 inventorySchema.pre("validate", function setDefaultMode() {
