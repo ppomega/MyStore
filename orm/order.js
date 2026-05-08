@@ -65,20 +65,17 @@ const orderSchema = new orm.Schema(
   }
 );
 
-orderSchema.pre("validate", function calculateOrderTotals(next) {
+orderSchema.pre("validate", function calculateOrderTotals() {
   this.items = this.items.map((item) => {
     if (item.total == null) {
       item.total = item.quantity * item.price;
     }
-
     return item;
   });
 
   if (this.estimatedTotal == null) {
     this.estimatedTotal = this.items.reduce((sum, item) => sum + item.total, 0);
   }
-
-  next();
 });
 
 module.exports = orderSchema;
