@@ -1,0 +1,80 @@
+const orm = require("mongoose");
+
+const orderItemSchema = new orm.Schema(
+  {
+    itemId: {
+      type: orm.Schema.Types.ObjectId,
+      ref: "Inventory",
+      required: true,
+    },
+    name: String,
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    total: {
+      type: Number,
+      min: 0,
+    },
+  },
+  { _id: false }
+);
+
+const orderSchema = new orm.Schema(
+  {
+    items: {
+      type: [orderItemSchema],
+      required: true,
+      validate: {
+        validator(items) {
+          return Array.isArray(items) && items.length > 0;
+        },
+        message: "Order must contain at least one item",
+      },
+    },
+    estimatedTotal: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    status: {
+      type: String,
+      required: true,
+      default: "Pending",
+      trim: true,
+    },
+    type: {
+      type: String,
+      required: true,
+      enum: ["Shop", "Customer"],
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+orderSchema.pre("validate", function calculateOrderTotals(next) {
+  this.items = this.items.map((item) => {
+    if (item.total == null) {
+      item.total = item.quantity * item.price;
+    }
+
+    return item;
+  });
+
+  if (this.estimatedTotal == null) {
+    this.estimatedTotal = this.items.reduce((sum, item) => sum + item.total, 0);
+  }
+
+  next();
+});
+
+module.exports = orderSchema;
