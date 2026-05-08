@@ -1,5 +1,17 @@
 const orm = require("mongoose");
 
+const ALLOWED_MODE_KEYS = [
+  "Loose",
+  "Piece",
+  "Bottle",
+  "Packet",
+  "Ladi",
+  "Set",
+  "Bag",
+  "Katta",
+  "Petti",
+];
+
 const orderItemSchema = new orm.Schema(
   {
     itemId: {
@@ -8,6 +20,12 @@ const orderItemSchema = new orm.Schema(
       required: true,
     },
     name: String,
+    mode: {
+      type: String,
+      required: true,
+      enum: ALLOWED_MODE_KEYS,
+      trim: true,
+    },
     quantity: {
       type: Number,
       required: true,

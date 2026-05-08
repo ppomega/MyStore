@@ -26,19 +26,26 @@ function getModeKeys(mode) {
   return Object.keys(mode);
 }
 
-module.exports = new orm.Schema({
+const inventorySchema = new orm.Schema({
   name: String,
-  buyingPrice: Number,
-  sellingPrice: Number,
+  buyingPrice: {
+    type: Number,
+    min: 0,
+  },
+  sellingPrice: {
+    type: Number,
+    min: 0,
+  },
   mode: {
     type: Map,
     of: {
       type: Number,
+      min: 0,
       validate: {
         validator(value) {
           return Number.isInteger(value);
         },
-        message: "Mode quantities must be integers",
+        message: "Mode quantity must be an integer",
       },
     },
     validate: {
@@ -48,6 +55,30 @@ module.exports = new orm.Schema({
       message: `Mode can only contain these keys: ${ALLOWED_MODE_KEYS.join(", ")}`,
     },
   },
+  defaultMode: {
+    type: String,
+    enum: ALLOWED_MODE_KEYS,
+    trim: true,
+    validate: {
+      validator(value) {
+        return !value || getModeKeys(this.mode).includes(value);
+      },
+      message: "Default mode must be one of the item's mode keys",
+    },
+  },
   category: String,
   weight: String,
 });
+
+inventorySchema.pre("validate", function setDefaultMode() {
+  if (this.defaultMode) {
+    return;
+  }
+
+  const [firstModeKey] = getModeKeys(this.mode);
+  if (firstModeKey) {
+    this.defaultMode = firstModeKey;
+  }
+});
+
+module.exports = inventorySchema;

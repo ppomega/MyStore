@@ -22,10 +22,7 @@ function normalizeOrderTotals(order) {
 
   const items = order.items.map((item) => {
     const nextItem = { ...item };
-
-    if (nextItem.total == null) {
-      nextItem.total = nextItem.quantity * nextItem.price;
-    }
+    nextItem.total = nextItem.quantity * nextItem.price;
 
     return nextItem;
   });
@@ -33,10 +30,7 @@ function normalizeOrderTotals(order) {
   return {
     ...order,
     items,
-    estimatedTotal:
-      order.estimatedTotal == null
-        ? items.reduce((sum, item) => sum + item.total, 0)
-        : order.estimatedTotal,
+    estimatedTotal: items.reduce((sum, item) => sum + item.total, 0),
   };
 }
 
@@ -63,8 +57,22 @@ async function updateOrder(id, updates) {
   ensureValidId(id);
   await connectToDb();
   const Order = getOrderModel();
+  const existingOrder = await Order.findById(id).lean();
 
-  return Order.findByIdAndUpdate(id, normalizeOrderTotals(updates), {
+  if (!existingOrder) {
+    return null;
+  }
+
+  const normalizedUpdates = normalizeOrderTotals({
+    ...existingOrder,
+    ...updates,
+    items: updates.items || existingOrder.items,
+    type: updates.type || existingOrder.type,
+  });
+  delete normalizedUpdates._id;
+  delete normalizedUpdates.__v;
+
+  return Order.findByIdAndUpdate(id, normalizedUpdates, {
     new: true,
     runValidators: true,
   }).lean();
