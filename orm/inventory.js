@@ -44,6 +44,23 @@ function getModeKeys(mode) {
   return getModeEntries(mode).map(([key]) => key);
 }
 
+function getModeFromValidationContext(context) {
+  if (context.mode) {
+    return context.mode;
+  }
+
+  if (typeof context.get === "function") {
+    return context.get("mode");
+  }
+
+  if (typeof context.getUpdate === "function") {
+    const update = context.getUpdate();
+    return update && (update.mode || (update.$set && update.$set.mode));
+  }
+
+  return undefined;
+}
+
 const inventorySchema = new orm.Schema({
   name: String,
   buyingPrice: {
@@ -77,7 +94,8 @@ const inventorySchema = new orm.Schema({
     trim: true,
     validate: {
       validator(value) {
-        return !value || getModeKeys(this.mode).includes(value);
+        const mode = getModeFromValidationContext(this);
+        return !value || getModeKeys(mode).includes(value);
       },
       message: "Default mode must be one of the item's mode keys",
     },

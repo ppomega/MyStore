@@ -42,8 +42,22 @@ async function updateInventoryItem(id, updates) {
   ensureValidId(id);
   await connectToDb();
   const Inventory = getInventoryModel();
+  const existingItem = await Inventory.findById(id).lean();
 
-  return Inventory.findByIdAndUpdate(id, updates, {
+  if (!existingItem) {
+    return null;
+  }
+
+  const normalizedUpdates = {
+    ...existingItem,
+    ...updates,
+    mode: updates.mode || existingItem.mode,
+    defaultMode: updates.defaultMode || existingItem.defaultMode,
+  };
+  delete normalizedUpdates._id;
+  delete normalizedUpdates.__v;
+
+  return Inventory.findByIdAndUpdate(id, normalizedUpdates, {
     new: true,
     runValidators: true,
   }).lean();
