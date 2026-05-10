@@ -61,6 +61,7 @@ async function createBorrowerDebt(borrowerDebt) {
 
   await Borrower.findByIdAndUpdate(borrowerDebt.borrower, {
     $inc: { debt: value },
+    $set: { lastCredit: new Date(), lastCreditedValue: value },
   });
 
   return BorrowerDebt.findById(debt._id).populate("borrower").lean();
@@ -111,15 +112,33 @@ async function updateBorrowerDebt(id, updates) {
     .lean();
 
   if (String(existingDebt.borrower) === String(nextBorrower)) {
-    await Borrower.findByIdAndUpdate(nextBorrower, {
-      $inc: { debt: nextValue - existingDebt.value },
-    });
+    const debtDelta = nextValue - existingDebt.value;
+    const borrowerUpdate = { $inc: { debt: debtDelta } };
+
+    if (debtDelta > 0) {
+      borrowerUpdate.$set = {
+        lastCredit: new Date(),
+        lastCreditedValue: debtDelta,
+      };
+    } else if (debtDelta < 0) {
+      borrowerUpdate.$set = {
+        lastDebit: new Date(),
+        lastDebitedValue: Math.abs(debtDelta),
+      };
+    }
+
+    await Borrower.findByIdAndUpdate(nextBorrower, borrowerUpdate);
   } else {
     await Borrower.findByIdAndUpdate(existingDebt.borrower, {
       $inc: { debt: -existingDebt.value },
+      $set: {
+        lastDebit: new Date(),
+        lastDebitedValue: existingDebt.value,
+      },
     });
     await Borrower.findByIdAndUpdate(nextBorrower, {
       $inc: { debt: nextValue },
+      $set: { lastCredit: new Date(), lastCreditedValue: nextValue },
     });
   }
 
@@ -136,6 +155,7 @@ async function deleteBorrowerDebt(id) {
   if (debt) {
     await Borrower.findByIdAndUpdate(debt.borrower._id || debt.borrower, {
       $inc: { debt: -debt.value },
+      $set: { lastDebit: new Date(), lastDebitedValue: debt.value },
     });
   }
 

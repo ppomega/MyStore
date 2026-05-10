@@ -20,6 +20,18 @@ const borrowerSchema = new orm.Schema(
     },
     lastCredit: Date,
     lastDebit: Date,
+    lastCreditedValue: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
+    lastDebitedValue: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

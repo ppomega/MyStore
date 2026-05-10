@@ -96,6 +96,7 @@ async function markTenantRentPaid(id) {
 
   await Tenant.findByIdAndUpdate(tenantRent.tenant, {
     lastRent: new Date(),
+    lastCreditedValue: tenantRent.roomRent,
   });
 
   return TenantRent.findById(id).populate("tenant").lean();

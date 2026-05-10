@@ -63,12 +63,13 @@ async function creditBorrower(id, amount) {
   ensureValidId(id);
   await connectToDb();
   const Borrower = getBorrowerModel();
+  const creditAmount = getAmount(amount);
 
   return Borrower.findByIdAndUpdate(
     id,
     {
-      $inc: { debt: getAmount(amount) },
-      $set: { lastCredit: new Date() },
+      $inc: { debt: creditAmount },
+      $set: { lastCredit: new Date(), lastCreditedValue: creditAmount },
     },
     {
       new: true,
@@ -87,7 +88,8 @@ async function debitBorrower(id, amount) {
     return null;
   }
 
-  const nextDebt = borrower.debt - getAmount(amount);
+  const debitAmount = getAmount(amount);
+  const nextDebt = borrower.debt - debitAmount;
 
   if (nextDebt < 0) {
     throw new Error("Debit amount cannot be greater than current debt");
@@ -98,6 +100,7 @@ async function debitBorrower(id, amount) {
     {
       debt: nextDebt,
       lastDebit: new Date(),
+      lastDebitedValue: debitAmount,
     },
     {
       new: true,

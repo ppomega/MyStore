@@ -53,10 +53,15 @@ async function markRentPaid(id) {
   ensureValidId(id);
   await connectToDb();
   const Tenant = getTenantModel();
+  const tenant = await Tenant.findById(id).lean();
+
+  if (!tenant) {
+    return null;
+  }
 
   return Tenant.findByIdAndUpdate(
     id,
-    { lastRent: new Date() },
+    { lastRent: new Date(), lastCreditedValue: tenant.rent || 0 },
     {
       new: true,
       runValidators: true,
