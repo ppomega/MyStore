@@ -1,5 +1,6 @@
 const express = require("express");
 const borrowerDebtCrud = require("../orm/borrowerDebtCrud");
+const { creditBorrower, debitBorrower } = require("../orm/borrowerCrud");
 
 const router = express.Router();
 
@@ -32,11 +33,16 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// POST /
+// Creates a debt entry and credits (increments debt) on the Borrower.
 router.post("/", async (req, res) => {
   try {
-    const borrowerDebt = await borrowerDebtCrud.createBorrowerDebt(
-      getRequestData(req)
-    );
+    const data = getRequestData(req);
+    const borrowerDebt = await borrowerDebtCrud.createBorrowerDebt(data);
+
+    // Reflect the new debt on the Borrower document.
+    await creditBorrower(borrowerDebt.borrower.toString(), borrowerDebt.value);
+
     res.status(201).json(borrowerDebt);
   } catch (error) {
     const status = error.message === "Borrower not found" ? 404 : 400;
@@ -44,24 +50,50 @@ router.post("/", async (req, res) => {
   }
 });
 
+// PUT /:id
+// Updates a debt entry. Reverses the old value on the Borrower first,
+// then applies the new value so the running debt stays accurate.
 router.put("/:id", async (req, res) => {
   try {
-    const borrowerDebt = await borrowerDebtCrud.updateBorrowerDebt(
-      req.params.id,
-      getRequestData(req)
+    const data = getRequestData(req);
+
+    // Fetch the existing debt so we know the old value before overwriting.
+    const existingDebt = await borrowerDebtCrud.getBorrowerDebtById(
+      req.params.id
     );
 
-    if (!borrowerDebt) {
+    if (!existingDebt) {
       return res.status(404).json({ error: "Borrower debt not found" });
     }
 
-    res.json(borrowerDebt);
+    const updatedDebt = await borrowerDebtCrud.updateBorrowerDebt(
+      req.params.id,
+      data
+    );
+
+    if (!updatedDebt) {
+      return res.status(404).json({ error: "Borrower debt not found" });
+    }
+
+    const borrowerId = updatedDebt.borrower.toString();
+    const oldValue = existingDebt.value;
+    const newValue = updatedDebt.value;
+
+    if (oldValue !== newValue) {
+      // Undo the old credit by debiting the old amount, then credit the new amount.
+      await debitBorrower(borrowerId, oldValue);
+      await creditBorrower(borrowerId, newValue);
+    }
+
+    res.json(updatedDebt);
   } catch (error) {
     const status = error.message === "Borrower not found" ? 404 : 400;
     res.status(status).json({ error: error.message });
   }
 });
 
+// DELETE /:id
+// Removes the debt entry and debits (decrements debt) from the Borrower.
 router.delete("/:id", async (req, res) => {
   try {
     const borrowerDebt = await borrowerDebtCrud.deleteBorrowerDebt(
@@ -71,6 +103,9 @@ router.delete("/:id", async (req, res) => {
     if (!borrowerDebt) {
       return res.status(404).json({ error: "Borrower debt not found" });
     }
+
+    // Reverse the debt that was previously credited to the Borrower.
+    await debitBorrower(borrowerDebt.borrower.toString(), borrowerDebt.value);
 
     res.json(borrowerDebt);
   } catch (error) {
