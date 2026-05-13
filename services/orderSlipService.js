@@ -1,64 +1,66 @@
-const orm = require('mongoose');
 const { generateOrderSlipBuffer, saveOrderSlip } = require('./orderSlipGenerator');
 
+// ─── Import your existing CRUD modules ───────────────────────────────────────
+// Adjust these paths to match your project structure.
+const { getOrderById, getOrders, getOrderModel }         = require('../orm/order/orderCrud');
+const { getInventoryItemById, getInventoryModel }         = require('../orm/inventory/inventoryCrud');
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Lazy getters — resolved at call-time, not at require-time.
-// Change 'Order' / 'Inventory' to match your actual model names.
-const orderSchema = require("../orm/order/order");
+/**
+ * Given an order (with items as ObjectId refs), resolve each item id
+ * against the Inventory CRUD layer and return a fully populated order object.
+ *
+ * @param {Object} order - Raw order from getOrderById / getOrders
+ * @returns {Promise<Object>} Order with items array replaced by full documents
+ */
+async function populateOrderItems(order) {
+  if (!Array.isArray(order.items) || order.items.length === 0) {
+    return order;
+  }
 
-const COLLECTION_NAME = "Orders";
-const MODEL_NAME = "Order";
+  const populated = await Promise.all(
+    order.items.map((itemId) =>
+      getInventoryItemById(String(itemId)).catch(() => null) // skip missing refs
+    )
+  );
 
-function getOrderModel() {
-  return orm.models[MODEL_NAME] || orm.model(MODEL_NAME, orderSchema, COLLECTION_NAME);
-}const Inventory = () => getModel('Inventory');
+  return {
+    ...order,
+    items: populated.filter(Boolean), // drop any nulls from missing/deleted items
+  };
+}
 
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 /**
- * Fetch a single order with populated items and return a PDF buffer.
+ * Fetch a single order, resolve its inventory items, and return a PDF buffer.
  *
  * @param {string} orderId
- * @param {Object} [opts]
- * @param {string} [opts.itemsField='items']    - Field on Order that holds item refs
- * @param {string} [opts.itemModel='Inventory'] - Model name the refs point to
  * @returns {Promise<{ buffer: Buffer, order: Object }>}
  */
-async function fetchAndGenerateSlip(orderId, opts = {}) {
-  const { itemsField = 'items', itemModel = 'Inventory' } = opts;
+async function fetchAndGenerateSlip(orderId) {
+  const rawOrder = await getOrderById(orderId);
+  if (!rawOrder) throw new Error(`Order not found: ${orderId}`);
 
-  const order = await Order()
-    .findById(orderId)
-    .populate({ path: itemsField, model: itemModel })
-    .lean();
-
-  if (!order) throw new Error(`Order not found: ${orderId}`);
-
+  const order  = await populateOrderItems(rawOrder);
   const buffer = await generateOrderSlipBuffer(order);
   return { buffer, order };
 }
 
 /**
- * Fetch multiple orders with populated items and generate PDF slips saved to disk.
+ * Fetch multiple orders, resolve their inventory items, and save PDF slips to disk.
  *
- * @param {Object} [filter={}]                  - Mongoose query filter e.g. { status: 'Complete' }
- * @param {string} [outputDir='./order-slips']  - Directory to save PDFs
- * @param {Object} [opts]
- * @param {string} [opts.itemsField='items']
- * @param {string} [opts.itemModel='Inventory']
+ * @param {Object} [filter={}]                 - Passed directly to getOrders()
+ * @param {string} [outputDir='./order-slips'] - Directory to write PDFs into
  * @returns {Promise<Array<{ orderId: string, filePath: string }>>}
  */
-async function bulkGenerateSlips(filter = {}, outputDir = './order-slips', opts = {}) {
-  const { itemsField = 'items', itemModel = 'Inventory' } = opts;
-
-  const orders = await Order()
-    .find(filter)
-    .populate({ path: itemsField, model: itemModel })
-    .lean();
+async function bulkGenerateSlips(filter = {}, outputDir = './order-slips') {
+  const rawOrders = await getOrders(filter);
 
   const results = [];
-  for (const order of orders) {
+  for (const rawOrder of rawOrders) {
+    const order    = await populateOrderItems(rawOrder);
     const filePath = await saveOrderSlip(order, outputDir);
     results.push({ orderId: String(order._id), filePath });
   }
@@ -66,42 +68,20 @@ async function bulkGenerateSlips(filter = {}, outputDir = './order-slips', opts 
 }
 
 /**
- * Fetch a single inventory/item document by ID.
- *
- * @param {string} itemId
- * @returns {Promise<Object>}
- */
-async function fetchInventoryItem(itemId) {
-  const item = await Inventory().findById(itemId).lean();
-  if (!item) throw new Error(`Inventory item not found: ${itemId}`);
-  return item;
-}
-
-/**
- * Fetch an order with its inventory items populated — no PDF generated.
- * Useful for building a preview or running checks before slip generation.
+ * Fetch an order with inventory items resolved — no PDF generated.
+ * Useful for previewing slip data before committing to PDF generation.
  *
  * @param {string} orderId
- * @param {Object} [opts]
- * @param {string} [opts.itemsField='items']
- * @param {string} [opts.itemModel='Inventory']
  * @returns {Promise<Object>}
  */
-async function fetchOrderWithInventory(orderId, opts = {}) {
-  const { itemsField = 'items', itemModel = 'Inventory' } = opts;
-
-  const order = await Order()
-    .findById(orderId)
-    .populate({ path: itemsField, model: itemModel })
-    .lean();
-
-  if (!order) throw new Error(`Order not found: ${orderId}`);
-  return order;
+async function fetchOrderWithInventory(orderId) {
+  const rawOrder = await getOrderById(orderId);
+  if (!rawOrder) throw new Error(`Order not found: ${orderId}`);
+  return populateOrderItems(rawOrder);
 }
 
 module.exports = {
   fetchAndGenerateSlip,
   bulkGenerateSlips,
-  fetchInventoryItem,
   fetchOrderWithInventory,
 };
