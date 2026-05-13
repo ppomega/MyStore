@@ -40,9 +40,6 @@ router.post("/", async (req, res) => {
     const data = getRequestData(req);
     const borrowerDebt = await borrowerDebtCrud.createBorrowerDebt(data);
 
-    // Reflect the new debt on the Borrower document.
-    await creditBorrower(borrowerDebt.borrower.toString(), borrowerDebt.value);
-
     res.status(201).json(borrowerDebt);
   } catch (error) {
     const status = error.message === "Borrower not found" ? 404 : 400;
@@ -74,17 +71,6 @@ router.put("/:id", async (req, res) => {
     if (!updatedDebt) {
       return res.status(404).json({ error: "Borrower debt not found" });
     }
-
-    const borrowerId = updatedDebt.borrower.toString();
-    const oldValue = existingDebt.value;
-    const newValue = updatedDebt.value;
-
-    if (oldValue !== newValue) {
-      // Undo the old credit by debiting the old amount, then credit the new amount.
-      await debitBorrower(borrowerId, oldValue);
-      await creditBorrower(borrowerId, newValue);
-    }
-
     res.json(updatedDebt);
   } catch (error) {
     const status = error.message === "Borrower not found" ? 404 : 400;
@@ -103,9 +89,6 @@ router.delete("/:id", async (req, res) => {
     if (!borrowerDebt) {
       return res.status(404).json({ error: "Borrower debt not found" });
     }
-
-    // Reverse the debt that was previously credited to the Borrower.
-    await debitBorrower(borrowerDebt.borrower.toString(), borrowerDebt.value);
 
     res.json(borrowerDebt);
   } catch (error) {

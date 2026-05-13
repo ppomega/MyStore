@@ -95,7 +95,6 @@ async function updateBorrowerDebt(id, updates) {
   }
 
   const nextUpdates = { ...updates };
-  const nextBorrower = nextUpdates.borrower || existingDebt.borrower;
   const nextValue =
     nextUpdates.value == null ? existingDebt.value : getAmount(nextUpdates.value);
 
@@ -110,37 +109,15 @@ async function updateBorrowerDebt(id, updates) {
     .populate("borrower")
     .lean();
 
-  if (String(existingDebt.borrower) === String(nextBorrower)) {
-    const debtDelta = nextValue - existingDebt.value;
-    const borrowerUpdate = { $inc: { debt: debtDelta } };
-
-    if (debtDelta > 0) {
-      borrowerUpdate.$set = {
-        lastCredit: new Date(),
-        lastCreditedValue: debtDelta,
-      };
-    } else if (debtDelta < 0) {
-      borrowerUpdate.$set = {
-        lastDebit: new Date(),
-        lastDebitedValue: Math.abs(debtDelta),
-      };
-    }
-
-    await Borrower.findByIdAndUpdate(nextBorrower, borrowerUpdate);
-  } else {
     await Borrower.findByIdAndUpdate(existingDebt.borrower, {
       $inc: { debt: -existingDebt.value },
       $set: {
         lastDebit: new Date(),
-        lastDebitedValue: existingDebt.value,
+        lastDebitedValue: nextValue,
       },
     });
-    await Borrower.findByIdAndUpdate(nextBorrower, {
-      $inc: { debt: nextValue },
-      $set: { lastCredit: new Date(), lastCreditedValue: nextValue },
-    });
-  }
-
+   
+  
   return debt;
 }
 
