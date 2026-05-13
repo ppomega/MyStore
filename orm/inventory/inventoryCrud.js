@@ -1,5 +1,5 @@
 const orm = require("mongoose");
-const { connectToDb } = require("../config/db");
+const { connectToDb } = require("../../config/db");
 
 const inventorySchema = require("./inventory");
 
