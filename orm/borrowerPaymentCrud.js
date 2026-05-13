@@ -52,14 +52,14 @@ async function ensureBorrowerExists(borrowerId) {
 async function getBorrowerPayments(filter = {}) {
   await connectToDb();
   const BorrowerPayment = getBorrowerPaymentModel();
-  return BorrowerPayment.find(filter).populate("borrower").lean();
+  return BorrowerPayment.find(filter);
 }
 
 async function getBorrowerPaymentById(id) {
   ensureValidId(id);
   await connectToDb();
   const BorrowerPayment = getBorrowerPaymentModel();
-  return BorrowerPayment.findById(id).populate("borrower").lean();
+  return BorrowerPayment.findById(id);
 }
 
 async function createBorrowerPayment(data) {
@@ -78,7 +78,7 @@ async function createBorrowerPayment(data) {
     $set: { lastDebit: new Date(), lastDebitedValue: value },
   });
 
-  return BorrowerPayment.findById(payment._id).populate("borrower").lean();
+  return BorrowerPayment.findById(payment._id);
 }
 
 async function updateBorrowerPayment(id, updates) {

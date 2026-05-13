@@ -69,14 +69,14 @@ async function createBorrowerDebt(borrowerDebt) {
 async function getBorrowerDebts(filter = {}) {
   await connectToDb();
   const BorrowerDebt = getBorrowerDebtModel();
-  return BorrowerDebt.find(filter).populate("borrower").lean();
+  return BorrowerDebt.find(filter);
 }
 
 async function getBorrowerDebtById(id) {
   ensureValidId(id, "Invalid borrower debt id");
   await connectToDb();
   const BorrowerDebt = getBorrowerDebtModel();
-  return BorrowerDebt.findById(id).populate("borrower").lean();
+  return BorrowerDebt.findById(id);
 }
 
 async function updateBorrowerDebt(id, updates) {
