@@ -98,7 +98,6 @@ async function updateBorrowerPayment(id, updates) {
   }
 
   const nextUpdates = { ...updates };
-  const nextBorrower = nextUpdates.borrower || existingPayment.borrower;
   const nextValue =
     nextUpdates.value == null
       ? existingPayment.value
@@ -115,41 +114,13 @@ async function updateBorrowerPayment(id, updates) {
     .populate("borrower")
     .lean();
 
-  if (String(existingPayment.borrower) === String(nextBorrower)) {
-    // Same borrower — adjust debt by the delta
-    const debtDelta = existingPayment.value - nextValue; // payment reduces debt, so reversed
-
-    const borrowerUpdate = { $inc: { debt: debtDelta } };
-
-    if (debtDelta < 0) {
-      // new payment is larger, debt reduced more
-      borrowerUpdate.$set = {
-        lastDebit: new Date(),
-        lastDebitedValue: Math.abs(debtDelta),
-      };
-    } else if (debtDelta > 0) {
-      // new payment is smaller, debt increased back
-      borrowerUpdate.$set = {
-        lastCredit: new Date(),
-        lastCreditedValue: debtDelta,
-      };
-    }
-
-    await Borrower.findByIdAndUpdate(nextBorrower, borrowerUpdate);
-  } else {
-    // Borrower changed — reverse payment on old, apply on new
+ 
+   
     await Borrower.findByIdAndUpdate(existingPayment.borrower, {
-      $inc: { debt: existingPayment.value }, // restore old borrower's debt
-      $set: {
-        lastCredit: new Date(),
-        lastCreditedValue: existingPayment.value,
-      },
-    });
-    await Borrower.findByIdAndUpdate(nextBorrower, {
       $inc: { debt: -nextValue }, // reduce new borrower's debt
       $set: { lastDebit: new Date(), lastDebitedValue: nextValue },
     });
-  }
+  
 
   return payment;
 }

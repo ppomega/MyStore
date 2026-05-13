@@ -68,7 +68,6 @@ router.post("/", async (req, res) => {
     const data = getRequestData(req);
     const payment = await borrowerPaymentCrud.createBorrowerPayment(data);
 
-    await syncBorrowerDebt(payment.borrower.toString());
 
     res.status(201).json(payment);
   } catch (error) {
@@ -111,8 +110,6 @@ router.delete("/:id", async (req, res) => {
     if (!payment) {
       return res.status(404).json({ error: "Borrower payment not found" });
     }
-
-    await syncBorrowerDebt(payment.borrower.toString());
 
     res.json(payment);
   } catch (error) {
