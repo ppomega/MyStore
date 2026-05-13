@@ -58,13 +58,12 @@ async function createBorrowerDebt(borrowerDebt) {
     ...borrowerDebt,
     value,
   });
-
   await Borrower.findByIdAndUpdate(borrowerDebt.borrower, {
     $inc: { debt: value },
     $set: { lastCredit: new Date(), lastCreditedValue: value },
   });
 
-  return BorrowerDebt.findById(debt._id).populate("borrower").lean();
+  return BorrowerDebt.findById(debt._id);
 }
 
 async function getBorrowerDebts(filter = {}) {
