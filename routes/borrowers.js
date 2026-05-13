@@ -1,5 +1,5 @@
 const express = require("express");
-const borrowerCrud = require("../orm/borrowerCrud");
+const borrowerCrud = require("../orm/borrower/borrowerCrud");
 
 const router = express.Router();
 

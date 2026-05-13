@@ -1,5 +1,5 @@
 const express = require("express");
-const tenantCrud = require("../orm/tenantCrud");
+const tenantCrud = require("../orm/tenant/tenantCrud");
 
 const router = express.Router();
 

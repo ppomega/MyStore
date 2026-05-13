@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const borrowerPaymentCrud = require("../orm/borrowerPaymentCrud");
-const { getBorrowerModel } = require("../orm/borrowerCrud");
+const borrowerPaymentCrud = require("../orm/borrower/borrowerPaymentCrud");
+const { getBorrowerModel } = require("../orm/borrower/borrowerCrud");
 
 const router = express.Router();
 

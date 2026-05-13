@@ -1,7 +1,7 @@
 const orm = require("mongoose");
-const { connectToDb } = require("../config/db");
+const { connectToDb } = require("../../config/db");
 
-const tenantSchema = require("./tenant/tenant");
+const tenantSchema = require("./tenant");
 
 const COLLECTION_NAME = "Tenants";
 const MODEL_NAME = "Tenant";

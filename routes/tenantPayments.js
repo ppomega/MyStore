@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const tenantPaymentCrud = require("../orm/tenantPaymentCrud");
-const { getTenantModel } = require("../orm/TenantCrud");
+const tenantPaymentCrud = require("../orm/tenant/tenantPaymentCrud");
+const { getTenantModel } = require("../orm/tenant/TenantCrud");
 
 const router = express.Router();
 
