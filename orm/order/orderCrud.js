@@ -15,29 +15,11 @@ function ensureValidId(id) {
   }
 }
 
-function normalizeOrderTotals(order) {
-  if (!Array.isArray(order.items)) {
-    return order;
-  }
-
-  const items = order.items.map((item) => {
-    const nextItem = { ...item };
-    nextItem.total = nextItem.quantity * nextItem.price;
-
-    return nextItem;
-  });
-
-  return {
-    ...order,
-    items,
-    estimatedTotal: items.reduce((sum, item) => sum + item.total, 0),
-  };
-}
 
 async function createOrder(order) {
   await connectToDb();
   const Order = getOrderModel();
-  return Order.create(normalizeOrderTotals(order));
+  return Order.create(order);
 }
 
 async function getOrders(filter = {}) {
@@ -63,16 +45,7 @@ async function updateOrder(id, updates) {
     return null;
   }
 
-  const normalizedUpdates = normalizeOrderTotals({
-    ...existingOrder,
-    ...updates,
-    items: updates.items || existingOrder.items,
-    type: updates.type || existingOrder.type,
-  });
-  delete normalizedUpdates._id;
-  delete normalizedUpdates.__v;
-
-  return Order.findByIdAndUpdate(id, normalizedUpdates, {
+  return Order.findByIdAndUpdate(id, updates, {
     new: true,
     runValidators: true,
   }).lean();
