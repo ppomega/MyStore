@@ -19,10 +19,14 @@ async function populateOrderItems(order) {
     return order;
   }
   const populated = await Promise.all(
-    order.items.map((item) =>
-      getInventoryItemById(String(item.itemId)).catch(() => null) // skip missing refs
-    )
+    order.items.map(async (item) => {
+      const c = await getInventoryItemById(String(item.itemId)).catch(() => null);
+      console.log("Resolved item:", c);
+      return {...item, name: c.name, category: c.category}; // skip missing refs
+    })
   );
+
+  console.log(populated);
   return {
     ...order,
     items: populated.filter(Boolean), // drop any nulls from missing/deleted items

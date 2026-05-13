@@ -5,7 +5,22 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Generates an HTML string for the order slip
+ * Escape HTML special characters
+ */
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#39;');
+}
+
+/**
+ * Builds the HTML string for an order slip.
+ * Item shape expected:
+ *   { itemId, name, category, mode, quantity, price, total }
+ *
  * @param {Object} order - Populated order document
  * @returns {string} HTML string
  */
@@ -16,30 +31,56 @@ function buildOrderSlipHTML(order) {
   });
 
   const statusColor = {
-    Complete: '#16a34a',
-    Pending:  '#d97706',
-    Cancelled:'#dc2626',
+    Complete:  '#16a34a',
+    Pending:   '#d97706',
+    Cancelled: '#dc2626',
   }[order.status] || '#6b7280';
 
-  const itemsRows = (order.items || []).map((item, i) => {
-    const name     = item.name     || item.title      || item.productName || `Item ${i + 1}`;
-    const qty      = item.quantity ?? item.qty         ?? 1;
-    const unit     = item.unit     || item.unitName    || '';
-    const price    = item.price    ?? item.unitPrice   ?? 0;
-    const subtotal = item.subtotal ?? item.total       ?? price * qty;
+  // ── Group items by category for a cleaner table ───────────────────────────
+  const items = order.items || [];
 
-    return `
-      <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
-        <td class="td-num">${i + 1}</td>
-        <td class="td-name">${escapeHtml(String(name))}</td>
-        <td class="td-center">${escapeHtml(String(unit))}</td>
-        <td class="td-right">${qty}</td>
-        <td class="td-right">₹${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-        <td class="td-right td-bold">₹${Number(subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+  // Build category → items map (preserving insertion order)
+  const grouped = {};
+  items.forEach((item) => {
+    const cat = item.category || 'General';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  });
+
+  let rowIndex = 0;
+  const itemsRows = Object.entries(grouped).map(([category, catItems]) => {
+    const categoryHeader = `
+      <tr class="category-row">
+        <td colspan="6" class="td-category-header">${escapeHtml(category)}</td>
       </tr>`;
+
+    const rows = catItems.map((item) => {
+      const name     = item.name || `Item ${rowIndex + 1}`;
+      const mode     = item.mode     || '';           // Packet / Loose / Box
+      const qty      = item.quantity ?? item.qty ?? 1;
+      const price    = item.price    ?? 0;
+      const subtotal = item.total    ?? item.subtotal ?? price * qty; // pre-computed first
+      const bg       = rowIndex % 2 === 0 ? 'row-even' : 'row-odd';
+      rowIndex++;
+
+      return `
+        <tr class="${bg}">
+          <td class="td-num">${rowIndex}</td>
+          <td class="td-name">${escapeHtml(name)}</td>
+          <td class="td-center">
+            ${mode ? `<span class="mode-badge">${escapeHtml(mode)}</span>` : '<span class="td-muted">—</span>'}
+          </td>
+          <td class="td-right">${qty}</td>
+          <td class="td-right">₹${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="td-right td-bold">₹${Number(subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>`;
+    }).join('');
+
+    return categoryHeader + rows;
   }).join('');
 
-  const total = Number(order.estimatedTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+  const grandTotal = Number(order.estimatedTotal || 0)
+    .toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -55,7 +96,7 @@ function buildOrderSlipHTML(order) {
     padding: 32px 40px;
   }
 
-  /* ── Header ─────────────────────────────── */
+  /* ── Header ───────────────────────────────── */
   .header {
     display: flex;
     justify-content: space-between;
@@ -76,7 +117,7 @@ function buildOrderSlipHTML(order) {
   .slip-meta td:first-child { color: #6b7280; text-align: right; }
   .slip-meta td:last-child  { font-weight: 600; text-align: left; padding-left: 8px; }
 
-  /* ── Info Grid ───────────────────────────── */
+  /* ── Info Grid ─────────────────────────────── */
   .info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -91,10 +132,13 @@ function buildOrderSlipHTML(order) {
     border-right: 1px solid #e5e7eb;
     border-bottom: 1px solid #e5e7eb;
   }
-  .info-cell:nth-child(even) { border-right: none; }
-  .info-cell:nth-last-child(-n+2) { border-bottom: none; }
-  .info-cell label { font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
-  .info-cell span  { font-weight: 600; font-size: 13px; }
+  .info-cell:nth-child(even)     { border-right: none; }
+  .info-cell:nth-last-child(-n+2){ border-bottom: none; }
+  .info-cell label {
+    font-size: 10px; color: #9ca3af; text-transform: uppercase;
+    letter-spacing: 0.5px; display: block; margin-bottom: 2px;
+  }
+  .info-cell span { font-weight: 600; font-size: 13px; }
   .badge {
     display: inline-block;
     padding: 2px 10px;
@@ -105,48 +149,69 @@ function buildOrderSlipHTML(order) {
     background: ${statusColor};
   }
 
-  /* ── Items Table ─────────────────────────── */
+  /* ── Items Table ───────────────────────────── */
   .section-title {
-    font-size: 11px;
-    font-weight: 700;
-    color: #1e3a5f;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
+    font-size: 11px; font-weight: 700; color: #1e3a5f;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
   }
   table.items {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 20px;
   }
-  table.items thead tr {
-    background: #1e3a5f;
-    color: #fff;
-  }
+  table.items thead tr { background: #1e3a5f; color: #fff; }
   table.items thead th {
     padding: 9px 10px;
     font-size: 11px;
     letter-spacing: 0.5px;
     text-transform: uppercase;
   }
-  .th-num    { width: 40px;  text-align: center; }
-  .th-name   { text-align: left; }
-  .th-unit   { width: 80px;  text-align: center; }
-  .th-qty    { width: 60px;  text-align: right; }
-  .th-price  { width: 100px; text-align: right; }
-  .th-sub    { width: 110px; text-align: right; }
+  .th-num   { width: 36px;  text-align: center; }
+  .th-name  { text-align: left; }
+  .th-mode  { width: 90px;  text-align: center; }
+  .th-qty   { width: 50px;  text-align: right; }
+  .th-price { width: 100px; text-align: right; }
+  .th-sub   { width: 110px; text-align: right; }
 
-  table.items tbody tr { transition: background 0.1s; }
+  /* Category header row */
+  .category-row td.td-category-header {
+    background: #f0f4ff;
+    color: #1e3a5f;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 5px 10px;
+    border-bottom: 1px solid #dce3f5;
+  }
+
   .row-even { background: #f9fafb; }
   .row-odd  { background: #fff; }
-  table.items tbody td { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; }
+  table.items tbody td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
   .td-num    { text-align: center; color: #9ca3af; font-size: 11px; }
   .td-name   { font-weight: 500; }
-  .td-center { text-align: center; color: #6b7280; }
+  .td-center { text-align: center; }
   .td-right  { text-align: right; }
   .td-bold   { font-weight: 700; }
+  .td-muted  { color: #d1d5db; }
 
-  /* ── Totals ──────────────────────────────── */
+  /* Mode badge (Packet / Loose / Box) */
+  .mode-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid #bfdbfe;
+  }
+
+  /* ── Totals ────────────────────────────────── */
   .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 32px; }
   .totals-box {
     width: 280px;
@@ -156,21 +221,17 @@ function buildOrderSlipHTML(order) {
   }
   .totals-box .row {
     display: flex; justify-content: space-between;
-    padding: 8px 14px;
-    font-size: 12px;
+    padding: 8px 14px; font-size: 12px;
     border-bottom: 1px solid #f3f4f6;
   }
   .totals-box .row:last-child { border-bottom: none; }
   .totals-box .row.grand {
-    background: #1e3a5f;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 700;
+    background: #1e3a5f; color: #fff;
+    font-size: 14px; font-weight: 700;
   }
-  .totals-box .row .label { color: inherit; }
   .totals-box .row .value { font-weight: 600; }
 
-  /* ── Footer ──────────────────────────────── */
+  /* ── Footer ────────────────────────────────── */
   .footer {
     border-top: 1px dashed #d1d5db;
     padding-top: 14px;
@@ -224,7 +285,7 @@ function buildOrderSlipHTML(order) {
     </div>
     <div class="info-cell">
       <label>Total Items</label>
-      <span>${(order.items || []).length}</span>
+      <span>${items.length}</span>
     </div>
   </div>
 
@@ -235,10 +296,10 @@ function buildOrderSlipHTML(order) {
       <tr>
         <th class="th-num">#</th>
         <th class="th-name">Item Name</th>
-        <th class="th-unit">Unit</th>
+        <th class="th-mode">Mode</th>
         <th class="th-qty">Qty</th>
         <th class="th-price">Unit Price</th>
-        <th class="th-sub">Subtotal</th>
+        <th class="th-sub">Total</th>
       </tr>
     </thead>
     <tbody>
@@ -251,7 +312,7 @@ function buildOrderSlipHTML(order) {
     <div class="totals-box">
       <div class="row grand">
         <span class="label">Estimated Total</span>
-        <span class="value">₹${total}</span>
+        <span class="value">₹${grandTotal}</span>
       </div>
     </div>
   </div>
@@ -270,19 +331,7 @@ function buildOrderSlipHTML(order) {
 }
 
 /**
- * Escape HTML special characters
- */
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#39;');
-}
-
-/**
- * Convert HTML string to PDF Buffer using puppeteer
+ * Convert HTML string to PDF Buffer using Puppeteer.
  * @param {string} html
  * @returns {Promise<Buffer>}
  */
@@ -306,9 +355,9 @@ async function htmlToPdfBuffer(html) {
 }
 
 /**
- * Core generator: given a populated order object, returns a PDF buffer.
- * @param {Object} order - Fully populated order document
- * @returns {Promise<Buffer>} PDF buffer
+ * Given a fully populated order object, returns a PDF buffer.
+ * @param {Object} order
+ * @returns {Promise<Buffer>}
  */
 async function generateOrderSlipBuffer(order) {
   const html = buildOrderSlipHTML(order);
@@ -317,15 +366,15 @@ async function generateOrderSlipBuffer(order) {
 
 /**
  * Save order slip PDF to disk.
- * @param {Object} order - Fully populated order document
- * @param {string} outputDir - Directory to save PDF (default: ./order-slips)
+ * @param {Object} order
+ * @param {string} [outputDir='./order-slips']
  * @returns {Promise<string>} Absolute path to saved PDF
  */
 async function saveOrderSlip(order, outputDir = './order-slips') {
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
   const fileName = `order-slip-${order._id}-${Date.now()}.pdf`;
   const filePath = path.resolve(outputDir, fileName);
-  const buffer = await generateOrderSlipBuffer(order);
+  const buffer   = await generateOrderSlipBuffer(order);
   fs.writeFileSync(filePath, buffer);
   return filePath;
 }
