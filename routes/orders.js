@@ -1,5 +1,9 @@
 const express = require("express");
 const orderCrud = require("../orm/order/orderCrud");
+const {
+  ensureOrderSlipSaved,
+  regenerateOrderSlip,
+} = require("../services/orderSlipService");
 
 const router = express.Router();
 
@@ -29,7 +33,8 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const order = await orderCrud.createOrder(req.body);
-    res.status(201).json(order);
+    const { order: orderWithSlip } = await ensureOrderSlipSaved(String(order._id));
+    res.status(201).json(orderWithSlip);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -43,7 +48,8 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ error: "Order not found" });
     }
 
-    res.json(order);
+    const { order: orderWithSlip } = await regenerateOrderSlip(req.params.id);
+    res.json(orderWithSlip || order);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

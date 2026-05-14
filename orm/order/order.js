@@ -77,6 +77,17 @@ const orderSchema = new orm.Schema(
       type: String,
       trim: true,
     },
+    orderSlip: {
+      filePath: {
+        type: String,
+        trim: true,
+      },
+      fileName: {
+        type: String,
+        trim: true,
+      },
+      generatedAt: Date,
+    },
   },
   {
     timestamps: true,

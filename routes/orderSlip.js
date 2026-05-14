@@ -9,13 +9,13 @@
 
 const express = require('express');
 const router  = express.Router();
-const { fetchAndGenerateSlip, bulkGenerateSlips } = require('../services/orderSlipService');
+const { fetchSavedSlip, bulkGenerateSlips } = require('../services/orderSlipService');
 
 // ── GET /api/order-slips/:id ───────────────────────────────────────────────
 // Streams PDF directly to browser / client.
 router.get('/:id', async (req, res) => {
   try {
-    const { buffer, order } = await fetchAndGenerateSlip(req.params.id);
+    const { buffer, order } = await fetchSavedSlip(req.params.id);
     const filename = `order-slip-${order._id}.pdf`;
 
     res.set({
@@ -29,8 +29,11 @@ router.get('/:id', async (req, res) => {
     if (err.message.startsWith('Order not found')) {
       return res.status(404).json({ error: err.message });
     }
+    if (err.message.startsWith('Order slip not found')) {
+      return res.status(404).json({ error: err.message });
+    }
     console.error('[OrderSlip] Error generating slip:', err);
-    res.status(500).json({ error: 'Failed to generate order slip' });
+    res.status(500).json({ error: 'Failed to send order slip' });
   }
 });
 
@@ -38,7 +41,7 @@ router.get('/:id', async (req, res) => {
 // Forces download instead of inline preview.
 router.get('/:id/download', async (req, res) => {
   try {
-    const { buffer, order } = await fetchAndGenerateSlip(req.params.id);
+    const { buffer, order } = await fetchSavedSlip(req.params.id);
     const filename = `order-slip-${order._id}.pdf`;
 
     res.set({
@@ -51,8 +54,11 @@ router.get('/:id/download', async (req, res) => {
     if (err.message.startsWith('Order not found')) {
       return res.status(404).json({ error: err.message });
     }
+    if (err.message.startsWith('Order slip not found')) {
+      return res.status(404).json({ error: err.message });
+    }
     console.error('[OrderSlip] Error generating slip:', err);
-    res.status(500).json({ error: 'Failed to generate order slip' });
+    res.status(500).json({ error: 'Failed to send order slip' });
   }
 });
 
