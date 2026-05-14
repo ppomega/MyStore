@@ -7,6 +7,7 @@ const tenantsRouter = require("./tenants");
 const tenantRentsRouter = require("./tenantRents");
 const borrowerPaymentsRouter = require("./borrowerPayments");
 const orderSlipRouter = require("./orderSlip");
+const tenantRentSlipRouter = require("./tenantRentSlip");
 const router = express.Router();
 
 router.get("/", (req, res) => {
@@ -16,6 +17,7 @@ router.get("/", (req, res) => {
 router.use("/inventory", inventoryRouter);
 router.use("/orders", ordersRouter);
 router.use("/order-slips", orderSlipRouter);
+router.use("/tenant-rent-slips", tenantRentSlipRouter);
 router.use("/borrowers", borrowersRouter);
 router.use("/borrower-debts", borrowerDebtsRouter);
 router.use("/borrower-payments", borrowerPaymentsRouter);

@@ -28,6 +28,17 @@ const tenantRentSchema = new orm.Schema(
       default: "Pending",
       trim: true,
     },
+    rentSlip: {
+      filePath: {
+        type: String,
+        trim: true,
+      },
+      fileName: {
+        type: String,
+        trim: true,
+      },
+      generatedAt: Date,
+    },
   },
   {
     timestamps: true,

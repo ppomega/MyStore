@@ -1,5 +1,9 @@
 const express = require("express");
 const tenantRentCrud = require("../orm/tenant/tenantRentCrud");
+const {
+  ensureTenantRentSlipSaved,
+  regenerateTenantRentSlip,
+} = require("../services/tenantRentSlipService");
 
 const router = express.Router();
 
@@ -33,7 +37,10 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const tenantRent = await tenantRentCrud.createTenantRent(getRequestData(req));
-    res.status(201).json(tenantRent);
+    const { tenantRent: tenantRentWithSlip } = await ensureTenantRentSlipSaved(
+      String(tenantRent._id)
+    );
+    res.status(201).json(tenantRentWithSlip);
   } catch (error) {
     const status = error.message === "Tenant not found" ? 404 : 400;
     res.status(status).json({ error: error.message });
@@ -51,7 +58,10 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ error: "Tenant rent not found" });
     }
 
-    res.json(tenantRent);
+    const { tenantRent: tenantRentWithSlip } = await regenerateTenantRentSlip(
+      req.params.id
+    );
+    res.json(tenantRentWithSlip || tenantRent);
   } catch (error) {
     const status = error.message === "Tenant not found" ? 404 : 400;
     res.status(status).json({ error: error.message });
@@ -66,7 +76,10 @@ router.post("/:id/mark-paid", async (req, res) => {
       return res.status(404).json({ error: "Tenant rent not found" });
     }
 
-    res.json(tenantRent);
+    const { tenantRent: tenantRentWithSlip } = await regenerateTenantRentSlip(
+      req.params.id
+    );
+    res.json(tenantRentWithSlip || tenantRent);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
