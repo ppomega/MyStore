@@ -30,9 +30,16 @@ function formatMoney(value) {
 function buildTenantRentSlipHTML(tenantRent) {
   const tenant = tenantRent.tenant || {};
   const month = formatDate(tenantRent.month, { day: undefined });
+  const previousMonth = tenantRent.previousRent?.month
+    ? formatDate(tenantRent.previousRent.month, { day: undefined })
+    : '-';
   const generatedAt = new Date().toLocaleString('en-IN');
   const status = tenantRent.status || 'Pending';
   const statusColor = status === 'Paid' ? '#16a34a' : '#d97706';
+  const unitRate = tenantRent.unitRate ?? 8;
+  const totalRent =
+    tenantRent.totalRent ?? Number(tenantRent.roomRent || 0) + Number(tenantRent.units || 0) * unitRate;
+  const qtyText = `${tenantRent.units ?? 0} Unit`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -43,8 +50,8 @@ function buildTenantRentSlipHTML(tenantRent) {
 
   body {
     font-family: Arial, Helvetica, sans-serif;
-    background: #f8fafc;
-    color: #172033;
+    background: #f3eccd;
+    color: #231512;
     font-size: 13px;
     padding: 28px;
   }
@@ -53,11 +60,11 @@ function buildTenantRentSlipHTML(tenantRent) {
     width: 100%;
     min-height: 420px;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-top: 8px solid #2563eb;
+    border: 1px solid #d8c99b;
+    border-top: 8px solid #231512;
     border-radius: 8px;
     padding: 28px;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 12px 28px rgba(35, 21, 18, 0.12);
   }
 
   .header {
@@ -65,21 +72,21 @@ function buildTenantRentSlipHTML(tenantRent) {
     justify-content: space-between;
     align-items: flex-start;
     gap: 18px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #d8c99b;
     padding-bottom: 18px;
     margin-bottom: 18px;
   }
 
   .title h1 {
-    font-family: 'Trebuchet MS', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 30px;
-    color: #0f172a;
+    color: #231512;
     line-height: 1.1;
   }
 
   .title p {
     margin-top: 5px;
-    color: #64748b;
+    color: #6f5d3f;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.6px;
@@ -88,14 +95,14 @@ function buildTenantRentSlipHTML(tenantRent) {
 
   .meta {
     text-align: right;
-    color: #64748b;
+    color: #6f5d3f;
     line-height: 1.7;
   }
 
   .meta strong {
     display: block;
-    color: #2563eb;
-    font-family: Georgia, 'Times New Roman', serif;
+    color: #231512;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 22px;
     line-height: 1.2;
     margin-bottom: 4px;
@@ -105,8 +112,8 @@ function buildTenantRentSlipHTML(tenantRent) {
     display: flex;
     justify-content: space-between;
     gap: 16px;
-    background: #eff6ff;
-    border: 1px solid #dbeafe;
+    background: #f3eccd;
+    border: 1px solid #d8c99b;
     border-radius: 8px;
     padding: 14px 16px;
     margin-bottom: 18px;
@@ -114,7 +121,7 @@ function buildTenantRentSlipHTML(tenantRent) {
 
   .field label {
     display: block;
-    color: #64748b;
+    color: #6f5d3f;
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.7px;
@@ -123,7 +130,7 @@ function buildTenantRentSlipHTML(tenantRent) {
   }
 
   .field span {
-    color: #0f172a;
+    color: #231512;
     font-size: 15px;
     font-weight: 800;
   }
@@ -142,7 +149,7 @@ function buildTenantRentSlipHTML(tenantRent) {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d8c99b;
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 22px;
@@ -150,7 +157,7 @@ function buildTenantRentSlipHTML(tenantRent) {
 
   .details td {
     padding: 14px 16px;
-    border-bottom: 1px solid #edf2f7;
+    border-bottom: 1px solid #eadfba;
   }
 
   .details tr:last-child td {
@@ -158,19 +165,38 @@ function buildTenantRentSlipHTML(tenantRent) {
   }
 
   .details td:first-child {
-    color: #64748b;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #6f5d3f;
     font-weight: 700;
     width: 45%;
   }
 
   .details td:last-child {
     text-align: right;
-    color: #0f172a;
+    color: #231512;
     font-weight: 800;
   }
 
+  .date-pair {
+    display: flex;
+    justify-content: flex-end;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  .date-pair span {
+    display: inline-flex;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .date-pair strong {
+    color: #6f5d3f;
+    font-weight: 700;
+  }
+
   .total-row td {
-    background: #2563eb;
+    background: #231512;
     color: #ffffff !important;
     font-size: 18px;
   }
@@ -179,16 +205,16 @@ function buildTenantRentSlipHTML(tenantRent) {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    border-top: 1px dashed #cbd5e1;
+    border-top: 1px dashed #d8c99b;
     padding-top: 14px;
-    color: #94a3b8;
+    color: #6f5d3f;
     font-size: 11px;
   }
 
   .sig-line {
     width: 170px;
-    border-top: 1px solid #334155;
-    color: #334155;
+    border-top: 1px solid #231512;
+    color: #231512;
     padding-top: 4px;
     text-align: center;
   }
@@ -225,20 +251,37 @@ function buildTenantRentSlipHTML(tenantRent) {
 
     <table class="details">
       <tr>
-        <td>Rent Month</td>
-        <td>${escapeHtml(month)}</td>
+        <td>Rent Dates</td>
+        <td>
+          <div class="date-pair">
+            <span><strong>Previous</strong> ${escapeHtml(previousMonth)}</span>
+            <span><strong>Current</strong> ${escapeHtml(month)}</span>
+          </div>
+        </td>
       </tr>
       <tr>
         <td>Room Rent</td>
         <td>&#8377;${formatMoney(tenantRent.roomRent)}</td>
       </tr>
       <tr>
-        <td>Units</td>
-        <td>${escapeHtml(tenantRent.units)}</td>
+        <td>Before Units</td>
+        <td>${escapeHtml(tenantRent.beforeUnits ?? 0)}</td>
+      </tr>
+      <tr>
+        <td>After Units</td>
+        <td>${escapeHtml(tenantRent.afterUnits ?? 0)}</td>
+      </tr>
+      <tr>
+        <td>Qty</td>
+        <td>${escapeHtml(qtyText)}</td>
+      </tr>
+      <tr>
+        <td>Unit Charge</td>
+        <td>&#8377;${formatMoney(Number(tenantRent.units || 0) * unitRate)}</td>
       </tr>
       <tr class="total-row">
         <td>Total Payable</td>
-        <td>&#8377;${formatMoney(tenantRent.roomRent)}</td>
+        <td>&#8377;${formatMoney(totalRent)}</td>
       </tr>
     </table>
 

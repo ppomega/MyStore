@@ -53,7 +53,7 @@ function buildOrderSlipHTML(order) {
   const itemsRows = Object.entries(grouped).map(([category, categoryItems]) => {
     const categoryHeader = `
       <tr class="category-row">
-        <td colspan="6" class="td-category-header">${escapeHtml(category)}</td>
+        <td colspan="5" class="td-category-header">${escapeHtml(category)}</td>
       </tr>`;
 
     const rows = categoryItems.map((item) => {
@@ -65,14 +65,13 @@ function buildOrderSlipHTML(order) {
       const bg = rowIndex % 2 === 0 ? 'row-even' : 'row-odd';
       rowIndex++;
 
+      const qtyText = `${qty}${mode ? ` ${mode}` : ''}`;
+
       return `
         <tr class="${bg}">
           <td class="td-num">${rowIndex}</td>
           <td class="td-name">${escapeHtml(name)}</td>
-          <td class="td-center">
-            ${mode ? `<span class="mode-badge">${escapeHtml(mode)}</span>` : '<span class="td-muted">&mdash;</span>'}
-          </td>
-          <td class="td-right">${qty}</td>
+          <td class="td-right">${escapeHtml(qtyText)}</td>
           <td class="td-right">&#8377;${Number(price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
           <td class="td-right td-bold">&#8377;${Number(subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
         </tr>`;
@@ -94,18 +93,18 @@ function buildOrderSlipHTML(order) {
   body {
     font-family: Arial, Helvetica, sans-serif;
     font-size: 12px;
-    color: #243041;
-    background: #f8fafc;
+    color: #231512;
+    background: #f3eccd;
     padding: 24px;
   }
 
   .slip {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-top: 8px solid #0f766e;
+    border: 1px solid #d8c99b;
+    border-top: 8px solid #231512;
     border-radius: 8px;
     padding: 28px 30px;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+    box-shadow: 0 12px 30px rgba(35, 21, 18, 0.12);
   }
 
   .header {
@@ -113,20 +112,20 @@ function buildOrderSlipHTML(order) {
     justify-content: space-between;
     align-items: center;
     gap: 24px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid #d8c99b;
     padding-bottom: 18px;
     margin-bottom: 18px;
   }
 
   .brand h1 {
-    font-family: 'Trebuchet MS', Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 30px;
     line-height: 1.05;
-    color: #0f172a;
+    color: #231512;
   }
 
   .brand p {
-    color: #64748b;
+    color: #6f5d3f;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.6px;
@@ -139,23 +138,23 @@ function buildOrderSlipHTML(order) {
   }
 
   .slip-meta h2 {
-    font-family: Georgia, 'Times New Roman', serif;
+    font-family: Arial, Helvetica, sans-serif;
     font-size: 22px;
-    color: #0f766e;
+    color: #231512;
     margin-bottom: 7px;
   }
 
   .slip-meta table { margin-left: auto; }
   .slip-meta td { padding: 2px 4px; font-size: 11px; }
-  .slip-meta td:first-child { color: #64748b; text-align: right; }
+  .slip-meta td:first-child { color: #6f5d3f; text-align: right; }
   .slip-meta td:last-child { font-weight: 600; text-align: left; padding-left: 8px; }
 
   .summary {
     display: flex;
     justify-content: space-between;
     gap: 12px;
-    background: #f0fdfa;
-    border: 1px solid #ccfbf1;
+    background: #f3eccd;
+    border: 1px solid #d8c99b;
     border-radius: 8px;
     padding: 12px 14px;
     margin-bottom: 18px;
@@ -165,7 +164,7 @@ function buildOrderSlipHTML(order) {
 
   .summary-item label {
     display: block;
-    color: #64748b;
+    color: #6f5d3f;
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.7px;
@@ -174,7 +173,7 @@ function buildOrderSlipHTML(order) {
   }
 
   .summary-item span {
-    color: #0f172a;
+    color: #231512;
     font-size: 13px;
     font-weight: 800;
   }
@@ -190,8 +189,8 @@ function buildOrderSlipHTML(order) {
   }
 
   .section-title {
-    font-family: 'Trebuchet MS', Arial, sans-serif;
-    color: #0f172a;
+    font-family: Arial, Helvetica, sans-serif;
+    color: #231512;
     font-size: 16px;
     font-weight: 800;
     margin-bottom: 8px;
@@ -201,18 +200,19 @@ function buildOrderSlipHTML(order) {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #d8c99b;
     border-radius: 8px;
     overflow: hidden;
     margin-bottom: 16px;
   }
 
   table.items thead tr {
-    background: #0f172a;
+    background: #231512;
     color: #ffffff;
   }
 
   table.items thead th {
+    font-family: Arial, Helvetica, sans-serif;
     padding: 10px;
     font-size: 10px;
     letter-spacing: 0.6px;
@@ -221,15 +221,15 @@ function buildOrderSlipHTML(order) {
 
   .th-num { width: 36px; text-align: center; }
   .th-name { text-align: left; }
-  .th-mode { width: 90px; text-align: center; }
-  .th-qty { width: 50px; text-align: right; }
+  .th-qty { width: 110px; text-align: right; }
   .th-price { width: 100px; text-align: right; }
   .th-sub { width: 110px; text-align: right; }
 
   .category-row td.td-category-header {
-    background: #ecfeff;
-    color: #0f766e;
-    border-bottom: 1px solid #ccfbf1;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f3eccd;
+    color: #231512;
+    border-bottom: 1px solid #d8c99b;
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.8px;
@@ -237,12 +237,12 @@ function buildOrderSlipHTML(order) {
     text-transform: uppercase;
   }
 
-  .row-even { background: #fbfdff; }
+  .row-even { background: #fffaf0; }
   .row-odd { background: #ffffff; }
 
   table.items tbody td {
     padding: 9px 10px;
-    border-bottom: 1px solid #eef2f7;
+    border-bottom: 1px solid #eadfba;
     vertical-align: middle;
   }
 
@@ -252,16 +252,16 @@ function buildOrderSlipHTML(order) {
   .td-name { font-weight: 700; }
   .td-center { text-align: center; }
   .td-right { text-align: right; }
-  .td-bold { color: #0f766e; font-weight: 800; }
+  .td-bold { color: #231512; font-weight: 800; }
   .td-muted { color: #cbd5e1; }
 
   .mode-badge {
     display: inline-block;
     padding: 3px 8px;
-    background: #fff7ed;
-    border: 1px solid #fed7aa;
+    background: #f3eccd;
+    border: 1px solid #d8c99b;
     border-radius: 999px;
-    color: #c2410c;
+    color: #231512;
     font-size: 10px;
     font-weight: 700;
   }
@@ -285,7 +285,7 @@ function buildOrderSlipHTML(order) {
   }
 
   .totals-box .row.grand {
-    background: #0f766e;
+    background: #231512;
     color: #ffffff;
     font-size: 16px;
     font-weight: 800;
@@ -297,16 +297,16 @@ function buildOrderSlipHTML(order) {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    border-top: 1px dashed #cbd5e1;
+    border-top: 1px dashed #d8c99b;
     padding-top: 14px;
-    color: #94a3b8;
+    color: #6f5d3f;
     font-size: 11px;
   }
 
   .footer .sig-line {
     width: 180px;
-    border-top: 1px solid #334155;
-    color: #334155;
+    border-top: 1px solid #231512;
+    color: #231512;
     font-size: 11px;
     padding-top: 4px;
     text-align: center;
@@ -355,14 +355,13 @@ function buildOrderSlipHTML(order) {
         <tr>
           <th class="th-num">#</th>
           <th class="th-name">Item Name</th>
-          <th class="th-mode">Mode</th>
           <th class="th-qty">Qty</th>
           <th class="th-price">Unit Price</th>
           <th class="th-sub">Total</th>
         </tr>
       </thead>
       <tbody>
-        ${itemsRows || '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">No items found</td></tr>'}
+        ${itemsRows || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#6f5d3f;">No items found</td></tr>'}
       </tbody>
     </table>
 

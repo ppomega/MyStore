@@ -10,9 +10,45 @@
 const express = require('express');
 const router  = express.Router();
 const { fetchSavedSlip, bulkGenerateSlips } = require('../services/orderSlipService');
+const { buildOrderSlipHTML } = require('../services/orderSlipGenerator');
 
 // ── GET /api/order-slips/:id ───────────────────────────────────────────────
 // Streams PDF directly to browser / client.
+router.get('/template', (req, res) => {
+  const sampleOrder = {
+    _id: 'template-preview',
+    vendor: 'Sample Vendor',
+    type: 'Purchase',
+    status: 'Pending',
+    createdAt: new Date(),
+    estimatedTotal: 5250,
+    items: [
+      {
+        name: 'Sample Item A',
+        category: 'General',
+        mode: 'Box',
+        quantity: 2,
+        price: 1500,
+        total: 3000,
+      },
+      {
+        name: 'Sample Item B',
+        category: 'General',
+        mode: 'Piece',
+        quantity: 3,
+        price: 750,
+        total: 2250,
+      },
+    ],
+  };
+
+  res.set({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'no-cache',
+  });
+  res.send(buildOrderSlipHTML(sampleOrder));
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const { buffer, order } = await fetchSavedSlip(req.params.id);

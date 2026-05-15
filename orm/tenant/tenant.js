@@ -18,6 +18,12 @@ const tenantSchema = new orm.Schema(
       default: 0,
       min: 0,
     },
+    beforeUnits: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
     doj: {
       type: Date,
       default: Date.now,
