@@ -2,6 +2,7 @@ const orm = require("mongoose");
 const { connectToDb } = require("../../config/db");
 const borrowerSchema = require("./borrower");
 const borrowerDebtSchema = require("./borrowerDebt");
+const { recalculateBorrowerDebt } = require("./borrowerCrud");
 
 const BORROWER_COLLECTION_NAME = "Borrowers";
 const BORROWER_MODEL_NAME = "Borrower";
@@ -51,16 +52,17 @@ async function ensureBorrowerExists(borrowerId) {
 async function createBorrowerDebt(borrowerDebt) {
   await connectToDb();
   await ensureBorrowerExists(borrowerDebt.borrower);
-  const Borrower = getBorrowerModel();
+  await recalculateBorrowerDebt(borrowerDebt.borrower);
   const BorrowerDebt = getBorrowerDebtModel();
   const value = getAmount(borrowerDebt.value);
   const debt = await BorrowerDebt.create({
     ...borrowerDebt,
     value,
   });
-  await Borrower.findByIdAndUpdate(borrowerDebt.borrower, {
-    $inc: { debt: value },
-    $set: { lastCredit: new Date(), lastCreditedValue: value },
+
+  await recalculateBorrowerDebt(borrowerDebt.borrower, {
+    lastCredit: new Date(),
+    lastCreditedValue: value,
   });
 
   return BorrowerDebt.findById(debt._id);
@@ -82,7 +84,6 @@ async function getBorrowerDebtById(id) {
 async function updateBorrowerDebt(id, updates) {
   ensureValidId(id, "Invalid borrower debt id");
   await connectToDb();
-  const Borrower = getBorrowerModel();
   const BorrowerDebt = getBorrowerDebtModel();
   const existingDebt = await BorrowerDebt.findById(id).lean();
 
@@ -90,8 +91,11 @@ async function updateBorrowerDebt(id, updates) {
     return null;
   }
 
+  await recalculateBorrowerDebt(existingDebt.borrower);
+
   if (updates.borrower) {
     await ensureBorrowerExists(updates.borrower);
+    await recalculateBorrowerDebt(updates.borrower);
   }
 
   const nextUpdates = { ...updates };
@@ -109,29 +113,39 @@ async function updateBorrowerDebt(id, updates) {
     .populate("borrower")
     .lean();
 
-    await Borrower.findByIdAndUpdate(existingDebt.borrower, {
-      $inc: { debt: -existingDebt.value },
-      $set: {
-        lastDebit: new Date(),
-        lastDebitedValue: nextValue,
-      },
+  await recalculateBorrowerDebt(existingDebt.borrower, {
+    lastCredit: new Date(),
+    lastCreditedValue: nextValue,
+  });
+
+  if (String(existingDebt.borrower) !== String(debt.borrower._id || debt.borrower)) {
+    await recalculateBorrowerDebt(debt.borrower._id || debt.borrower, {
+      lastCredit: new Date(),
+      lastCreditedValue: nextValue,
     });
-   
-  
+  }
+
   return debt;
 }
 
 async function deleteBorrowerDebt(id) {
   ensureValidId(id, "Invalid borrower debt id");
   await connectToDb();
-  const Borrower = getBorrowerModel();
   const BorrowerDebt = getBorrowerDebtModel();
+  const existingDebt = await BorrowerDebt.findById(id).lean();
+
+  if (!existingDebt) {
+    return null;
+  }
+
+  await recalculateBorrowerDebt(existingDebt.borrower);
+
   const debt = await BorrowerDebt.findByIdAndDelete(id).populate("borrower").lean();
 
   if (debt) {
-    await Borrower.findByIdAndUpdate(debt.borrower._id || debt.borrower, {
-      $inc: { debt: -debt.value },
-      $set: { lastDebit: new Date(), lastDebitedValue: debt.value },
+    await recalculateBorrowerDebt(debt.borrower._id || debt.borrower, {
+      lastDebit: new Date(),
+      lastDebitedValue: debt.value,
     });
   }
 

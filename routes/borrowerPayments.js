@@ -1,7 +1,5 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const borrowerPaymentCrud = require("../orm/borrower/borrowerPaymentCrud");
-const { getBorrowerModel } = require("../orm/borrower/borrowerCrud");
 
 const router = express.Router();
 
@@ -35,8 +33,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /
-// Records a payment and decrements the Borrower's net debt.
 router.post("/", async (req, res) => {
   try {
     const data = getRequestData(req);
@@ -50,8 +46,6 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /:id
-// Updates a payment and re-syncs the Borrower's net debt.
 router.put("/:id", async (req, res) => {
   try {
     const data = getRequestData(req);
@@ -72,8 +66,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /:id
-// Removes a payment and re-syncs the Borrower's net debt.
 router.delete("/:id", async (req, res) => {
   try {
     const payment = await borrowerPaymentCrud.deleteBorrowerPayment(

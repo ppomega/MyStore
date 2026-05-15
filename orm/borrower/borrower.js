@@ -12,6 +12,12 @@ const borrowerSchema = new orm.Schema(
       required: false,
       trim: true,
     },
+    initialDebt: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
     debt: {
       type: Number,
       required: false,

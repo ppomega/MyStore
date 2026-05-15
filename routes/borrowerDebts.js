@@ -1,6 +1,5 @@
 const express = require("express");
 const borrowerDebtCrud = require("../orm/borrower/borrowerDebtCrud");
-const { creditBorrower, debitBorrower } = require("../orm/borrower/borrowerCrud");
 
 const router = express.Router();
 
@@ -33,8 +32,6 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /
-// Creates a debt entry and credits (increments debt) on the Borrower.
 router.post("/", async (req, res) => {
   try {
     const data = getRequestData(req);
@@ -47,14 +44,10 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /:id
-// Updates a debt entry. Reverses the old value on the Borrower first,
-// then applies the new value so the running debt stays accurate.
 router.put("/:id", async (req, res) => {
   try {
     const data = getRequestData(req);
 
-    // Fetch the existing debt so we know the old value before overwriting.
     const existingDebt = await borrowerDebtCrud.getBorrowerDebtById(
       req.params.id
     );
@@ -78,8 +71,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /:id
-// Removes the debt entry and debits (decrements debt) from the Borrower.
 router.delete("/:id", async (req, res) => {
   try {
     const borrowerDebt = await borrowerDebtCrud.deleteBorrowerDebt(

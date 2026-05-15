@@ -3,6 +3,7 @@ const { connectToDb } = require("../../config/db");
 
 const borrowerSchema = require("./borrower");
 const borrowerPaymentSchema = require("./borrowerPayment");
+const { recalculateBorrowerDebt } = require("./borrowerCrud");
 
 const BORROWER_COLLECTION_NAME = "Borrowers";
 const BORROWER_MODEL_NAME = "Borrower";
@@ -65,17 +66,20 @@ async function getBorrowerPaymentById(id) {
 async function createBorrowerPayment(data) {
   await connectToDb();
   await ensureBorrowerExists(data.borrower);
+  const borrower = await recalculateBorrowerDebt(data.borrower);
 
-  const Borrower = getBorrowerModel();
   const BorrowerPayment = getBorrowerPaymentModel();
   const value = getAmount(data.value);
 
+  if (value > borrower.debt) {
+    throw new Error("Payment amount cannot be greater than current debt");
+  }
+
   const payment = await BorrowerPayment.create({ ...data, value });
 
-  // Payment reduces the borrower's debt
-  await Borrower.findByIdAndUpdate(data.borrower, {
-    $inc: { debt: -value },
-    $set: { lastDebit: new Date(), lastDebitedValue: value },
+  await recalculateBorrowerDebt(data.borrower, {
+    lastDebit: new Date(),
+    lastDebitedValue: value,
   });
 
   return BorrowerPayment.findById(payment._id);
@@ -85,7 +89,6 @@ async function updateBorrowerPayment(id, updates) {
   ensureValidId(id);
   await connectToDb();
 
-  const Borrower = getBorrowerModel();
   const BorrowerPayment = getBorrowerPaymentModel();
   const existingPayment = await BorrowerPayment.findById(id).lean();
 
@@ -93,15 +96,28 @@ async function updateBorrowerPayment(id, updates) {
     return null;
   }
 
+  const existingBorrower = await recalculateBorrowerDebt(existingPayment.borrower);
+
   if (updates.borrower) {
     await ensureBorrowerExists(updates.borrower);
   }
 
   const nextUpdates = { ...updates };
+  const nextBorrowerId = nextUpdates.borrower || existingPayment.borrower;
   const nextValue =
     nextUpdates.value == null
       ? existingPayment.value
       : getAmount(nextUpdates.value);
+  const sameBorrower =
+    String(existingPayment.borrower) === String(nextBorrowerId);
+  const nextBorrower = sameBorrower
+    ? existingBorrower
+    : await recalculateBorrowerDebt(nextBorrowerId);
+  const availableDebt = nextBorrower.debt + (sameBorrower ? existingPayment.value : 0);
+
+  if (nextValue > availableDebt) {
+    throw new Error("Payment amount cannot be greater than current debt");
+  }
 
   if (nextUpdates.value != null) {
     nextUpdates.value = nextValue;
@@ -114,13 +130,20 @@ async function updateBorrowerPayment(id, updates) {
     .populate("borrower")
     .lean();
 
- 
-   
-    await Borrower.findByIdAndUpdate(existingPayment.borrower, {
-      $inc: { debt: -nextValue }, // reduce new borrower's debt
-      $set: { lastDebit: new Date(), lastDebitedValue: nextValue },
+  await recalculateBorrowerDebt(existingPayment.borrower, {
+    lastDebit: new Date(),
+    lastDebitedValue: nextValue,
+  });
+
+  if (
+    String(existingPayment.borrower) !==
+    String(payment.borrower._id || payment.borrower)
+  ) {
+    await recalculateBorrowerDebt(payment.borrower._id || payment.borrower, {
+      lastDebit: new Date(),
+      lastDebitedValue: nextValue,
     });
-  
+  }
 
   return payment;
 }
@@ -129,17 +152,23 @@ async function deleteBorrowerPayment(id) {
   ensureValidId(id);
   await connectToDb();
 
-  const Borrower = getBorrowerModel();
   const BorrowerPayment = getBorrowerPaymentModel();
+  const existingPayment = await BorrowerPayment.findById(id).lean();
+
+  if (!existingPayment) {
+    return null;
+  }
+
+  await recalculateBorrowerDebt(existingPayment.borrower);
+
   const payment = await BorrowerPayment.findByIdAndDelete(id)
     .populate("borrower")
     .lean();
 
   if (payment) {
-    // Deleting a payment means debt goes back up
-    await Borrower.findByIdAndUpdate(payment.borrower._id || payment.borrower, {
-      $inc: { debt: payment.value },
-      $set: { lastCredit: new Date(), lastCreditedValue: payment.value },
+    await recalculateBorrowerDebt(payment.borrower._id || payment.borrower, {
+      lastCredit: new Date(),
+      lastCreditedValue: payment.value,
     });
   }
 
